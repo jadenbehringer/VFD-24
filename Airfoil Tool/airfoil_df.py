@@ -99,6 +99,16 @@ def search_by_bot_xtr(df, bot_xtr_min, bot_xtr_max):
         print(f"Error searching by Bot_Xtr: {e}")
         return None
 
+def search_by_cl_cd(df, min_cl_cd, max_cl_cd):
+    try:
+        print(f"Searching for Cl/Cd in range: {min_cl_cd} to {max_cl_cd}")
+        cl_cd_df = df[(df['Cl/Cd'] >= min_cl_cd) & (df['Cl/Cd'] <= max_cl_cd)]
+        print(f"Search by Cl/Cd range completed. Found {len(cl_cd_df)} records.")
+        return cl_cd_df
+    except Exception as e:
+        print(f"Error searching by Cl/Cd range: {e}")
+        return None
+
 def get_range_input(param_name):
     min_val = input(f"Enter minimum value for {param_name} (or 'NA' to skip): ")
     try:
@@ -126,6 +136,30 @@ def display_results(title, df):
     else:
         print(f"No results found for {title}")
 
+def search_with_and_operator(df):
+    filters = {}
+    parameters = ['Alpha', 'Cd', 'Cl', 'Cdp', 'Cm', 'Top_Xtr', 'Bot_Xtr', 'Cl/Cd']
+    print("Enter the range for each parameter to filter the data.")
+    for param in parameters:
+        min_val, max_val = get_range_input(param)
+        if min_val is not None and max_val is not None:
+            filters[param] = (min_val, max_val)
+    
+    if not filters:
+        print("No valid filters provided.")
+        return "NONE"
+    
+    query = " & ".join([f"({param} >= {min_val} & {param} <= {max_val})" for param, (min_val, max_val) in filters.items()])
+    
+    try:
+        result_df = df.query(query)
+        if result_df.empty:
+            return "NONE"
+        return result_df
+    except Exception as e:
+        print(f"Error performing 'and' search: {e}")
+        return "NONE"
+
 def main():
     Tk().withdraw()
     filepath = askopenfilename(filetypes=[("CSV files", "*.csv")])
@@ -135,6 +169,12 @@ def main():
     print(f"Selected file: {filepath}")
     df = load_csv(filepath)
     if df is not None:
+        and_search_result = search_with_and_operator(df)
+        if isinstance(and_search_result, str) and and_search_result == "NONE":
+            print("No results found for combined search.")
+        else:
+            display_results('Combined Search', and_search_result)
+
         aoa_min, aoa_max = get_range_input('Alpha')
         if aoa_min is not None and aoa_max is not None:
             aoa_df = search_by_aoa(df, aoa_min, aoa_max)
@@ -169,6 +209,7 @@ def main():
         if bot_xtr_min is not None and bot_xtr_max is not None:
             bot_xtr_df = search_by_bot_xtr(df, bot_xtr_min, bot_xtr_max)
             display_results('Bot_Xtr', bot_xtr_df)
+        
     else:
         print("Dataframe is None, cannot proceed with search.")
 
